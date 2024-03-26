@@ -1,30 +1,8 @@
 package urlshort
 
 import (
-	"fmt"
-	"io"
-	"log"
 	"net/http"
 )
-
-func generateHandler(url string) func(http.ResponseWriter, *http.Request) {
-
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatal("There is an issue with HTTP request")
-	}
-
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal("Failed to read response body")
-	}
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, string(body))
-	}
-}
 
 // MapHandler will return an http.HandlerFunc (which also
 // implements http.Handler) that will attempt to map any
@@ -34,11 +12,13 @@ func generateHandler(url string) func(http.ResponseWriter, *http.Request) {
 // http.Handler will be called instead.
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
 
-	handlerFunc := func(w http.ResponseWriter, req *http.Request) {
-		for path, url := range pathsToUrls {
-			handler := generateHandler(url)
-			http.HandleFunc(path, handler)
+	handlerFunc := func(w http.ResponseWriter, r *http.Request) {
+		if url, ok := pathsToUrls[r.URL.Path]; ok {
+			http.Redirect(w, r, url, http.StatusPermanentRedirect)
+
+			return
 		}
+		fallback.ServeHTTP(w, r)
 	}
 
 	return handlerFunc
