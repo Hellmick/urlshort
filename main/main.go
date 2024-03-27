@@ -1,13 +1,29 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/Hellmick/urlshort/urlshort"
 )
 
+func readYAMLFile(fileLocation *string) ([]byte, error) {
+
+	file, err := os.ReadFile(*fileLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
+}
+
 func main() {
+
+	fileLocation := flag.String("f", "config.yaml", "provide paths and urls config")
+	flag.Parse()
+
 	mux := defaultMux()
 
 	pathsToUrls := map[string]string{
@@ -16,18 +32,16 @@ func main() {
 	}
 	mapHandler := urlshort.MapHandler(pathsToUrls, mux)
 
-	// Build the YAMLHandler using the mapHandler as the
-	// fallback
-	yaml :=
-		`- path: /urlshort
-  url: https://github.com/gophercises/urlshort
-- path: /urlshort-final
-  url: https://github.com/gophercises/urlshort/tree/solution`
+	yaml, err := readYAMLFile(fileLocation)
+	if err != nil {
+		panic(err)
+	}
 
 	yamlHandler, err := urlshort.YAMLHandler([]byte(yaml), mapHandler)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Println("Starting the server on :8080")
 	http.ListenAndServe(":8080", yamlHandler)
 }
